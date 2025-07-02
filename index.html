@@ -130,9 +130,9 @@
           <!-- 音乐播放按钮 -->
           <li>
             <button id="music-btn" class="btn-hover px-3 py-1 rounded-md bg-accent text-white transition-colors hover:bg-accent/80 flex items-center">
-              <i class="fa fa-music mr-1"></i> 热歌
+              <i class="fa fa-music mr-1"></i> 音乐
             </button>
-            <audio id="music-audio" src="https://music.163.com/song/media/outer/url?id=1976920826.mp3" preload="auto"></audio>
+            <audio id="music-audio" src="Canon.mp3" preload="auto"></audio>
           </li>
         </ul>
       </nav>
@@ -403,13 +403,13 @@
         musicPlaying = true;
       } else {
         musicAudio.pause();
-        musicBtn.innerHTML = '<i class="fa fa-music mr-1"></i> 热歌';
+        musicBtn.innerHTML = '<i class="fa fa-music mr-1"></i> 音乐';
         musicBtn.classList.remove('bg-accent/70');
         musicPlaying = false;
       }
     });
     musicAudio.addEventListener('ended', function() {
-      musicBtn.innerHTML = '<i class="fa fa-music mr-1"></i> 热歌';
+      musicBtn.innerHTML = '<i class="fa fa-music mr-1"></i> 音乐';
       musicBtn.classList.remove('bg-accent/70');
       musicPlaying = false;
     });
