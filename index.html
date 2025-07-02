@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>开元消消乐</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#FF6B6B',
+            secondary: '#4ECDC4',
+            accent: '#FFD166',
+            dark: '#292F36',
+            light: '#F7FFF7'
+          },
+          fontFamily: {
+            game: ['"Comic Sans MS"', '"Marker Felt"', 'Arial', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .tile-shadow {
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), inset 0 -2px 4px 0 rgba(0, 0, 0, 0.05), inset 0 2px 4px 0 rgba(255, 255, 255, 0.2);
+      }
+      .game-title {
+        text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.1);
+      }
+      .btn-hover {
+        transition: all 0.2s ease;
+      }
+      .btn-hover:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      }
+      .tile-selected {
+        animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+      @keyframes pulse {
+        0%, 100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.8;
+          transform: scale(1.05);
+        }
+      }
+      .tile-remove {
+        animation: shrink 0.3s ease forwards;
+      }
+      @keyframes shrink {
+        0% {
+          transform: scale(1);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(0);
+          opacity: 0;
+        }
+      }
+      .tile-fall {
+        animation: fall 0.3s ease-out forwards;
+      }
+      @keyframes fall {
+        0% {
+          transform: translateY(-100%);
+          opacity: 0.5;
+        }
+        100% {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+      .score-popup {
+        animation: popup 1s ease-out forwards;
+      }
+      @keyframes popup {
+        0% {
+          transform: translateY(0);
+          opacity: 1;
+        }
+        100% {
+          transform: translateY(-30px);
+          opacity: 0;
+        }
+      }
+      /* New styles for swap animation positioning */
+      .tile-swapping {
+        position: absolute;
+        z-index: 5; /* Ensure swapping tiles are on top */
+      }
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen font-game text-dark">
+  <header class="bg-white/80 backdrop-blur-sm shadow-md sticky top-0 z-50 transition-all duration-300">
+    <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+      <div class="flex items-center space-x-2">
+        <i class="fa fa-puzzle-piece text-primary text-2xl"></i>
+        <h1 class="text-xl md:text-2xl font-bold text-primary game-title">开元消消乐</h1>
+      </div>
+      <nav>
+        <ul class="flex space-x-4">
+          <li><button id="home-btn" class="btn-hover px-3 py-1 rounded-md bg-primary/10 text-primary transition-colors hover:bg-primary/20">首页</button></li>
+          <li><button id="levels-btn" class="btn-hover px-3 py-1 rounded-md bg-primary/10 text-primary transition-colors hover:bg-primary/20">关卡</button></li>
+          <li><button id="help-btn" class="btn-hover px-3 py-1 rounded-md bg-primary/10 text-primary transition-colors hover:bg-primary/20">帮助</button></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container mx-auto px-4 py-8 flex-grow">
+    <section id="welcome-screen" class="flex flex-col items-center justify-center py-16">
+      <div class="max-w-2xl w-full bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-8 text-center">
+        <div class="mb-8">
+          <i class="fa fa-puzzle-piece text-primary text-5xl mb-4"></i>
+          <h2 class="text-[clamp(2rem,5vw,3rem)] font-bold text-primary mb-2 game-title">开元消消乐</h2>
+          <p class="text-gray-600 mb-6">消除三个或更多相同的元素，挑战你的眼力和反应能力！</p>
+        </div>
+        
+        <div class="space-y-4 mb-8">
+          <button id="start-game-btn" class="btn-hover w-full py-4 px-6 bg-primary text-white rounded-xl text-xl font-bold shadow-lg transition-all">
+            <i class="fa fa-play-circle mr-2"></i>开始游戏
+          </button>
+          <button id="select-level-btn" class="btn-hover w-full py-4 px-6 bg-secondary text-white rounded-xl text-xl font-bold shadow-lg transition-all">
+            <i class="fa fa-th-large mr-2"></i>选择关卡
+          </button>
+        </div>
+        
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+          <div class="bg-light rounded-lg p-4 shadow-md">
+            <i class="fa fa-star text-accent text-3xl mb-2"></i>
+            <h3 class="font-bold text-lg mb-1">多种关卡</h3>
+            <p class="text-sm text-gray-600">超过50个有趣关卡等你挑战</p>
+          </div>
+          <div class="bg-light rounded-lg p-4 shadow-md">
+            <i class="fa fa-trophy text-accent text-3xl mb-2"></i>
+            <h3 class="font-bold text-lg mb-1">成就系统</h3>
+            <p class="text-sm text-gray-600">解锁各种成就和称号</p>
+          </div>
+          <div class="bg-light rounded-lg p-4 shadow-md">
+            <i class="fa fa-refresh text-accent text-3xl mb-2"></i>
+            <h3 class="font-bold text-lg mb-1">无限乐趣</h3>
+            <p class="text-sm text-gray-600">简单易玩，难于精通</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="levels-screen" class="hidden py-12">
+      <h2 class="text-3xl font-bold text-center text-primary mb-8 game-title">选择关卡</h2>
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        </div>
+    </section>
+
+    <section id="help-screen" class="hidden py-12 max-w-3xl mx-auto">
+      <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-8">
+        <h2 class="text-3xl font-bold text-center text-primary mb-6 game-title">游戏帮助</h2>
+        
+        <div class="space-y-6">
+          <div class="bg-light rounded-lg p-5 shadow-md">
+            <h3 class="text-xl font-bold text-secondary mb-3"><i class="fa fa-gamepad mr-2"></i>游戏玩法</h3>
+            <p>交换相邻的两个元素，形成三个或更多相同元素的连线。连线可以是水平或垂直的。当你消除元素后，上方的元素会下落，新的元素会从顶部生成。</p>
+          </div>
+          
+          <div class="bg-light rounded-lg p-5 shadow-md">
+            <h3 class="text-xl font-bold text-secondary mb-3"><i class="fa fa-trophy mr-2"></i>游戏目标</h3>
+            <p>每个关卡都有不同的目标，如达到一定分数、消除特定元素或在限定步数内完成任务。查看每个关卡开始时的说明了解具体目标。</p>
+          </div>
+          
+          <div class="bg-light rounded-lg p-5 shadow-md">
+            <h3 class="text-xl font-bold text-secondary mb-3"><i class="fa fa-star mr-2"></i>特殊元素</h3>
+            <ul class="list-disc pl-5 space-y-2">
+              <li><span class="font-bold">炸弹：</span>通过消除5个相同元素形成，可以消除周围3x3范围内的所有元素</li>
+              <li><span class="font-bold">彩虹糖：</span>通过交叉消除两个特殊元素形成，可以消除所有选定类型的元素</li>
+              <li><span class="font-bold">直线消除：</span>通过消除4个相同元素形成，可以消除一行或一列的所有元素</li>
+            </ul>
+          </div>
+          
+          <div class="bg-light rounded-lg p-5 shadow-md">
+            <h3 class="text-xl font-bold text-secondary mb-3"><i class="fa fa-star-half-o mr-2"></i>得分规则</h3>
+            <ul class="list-disc pl-5 space-y-2">
+              <li>基础得分：每个普通消除得10分</li>
+              <li>连续消除：连续消除会获得额外分数</li>
+              <li>特殊元素：使用特殊元素消除会获得更高分数</li>
+            </ul>
+          </div>
+        </div>
+        
+        <div class="mt-8 text-center">
+          <button id="back-from-help-btn" class="btn-hover py-3 px-6 bg-primary text-white rounded-lg text-lg font-bold shadow-md transition-all">
+            返回
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="game-screen" class="hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-6">
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-primary game-title">关卡 <span id="current-level">1</span></h2>
+            <button id="back-btn" class="btn-hover p-2 rounded-full bg-gray-100 text-gray-600 transition-colors hover:bg-gray-200">
+              <i class="fa fa-arrow-left"></i>
+            </button>
+          </div>
+          
+          <div class="space-y-4 mb-6">
+            <div class="bg-light rounded-lg p-4 shadow-md">
+              <h3 class="font-bold text-lg mb-2">目标</h3>
+              <p id="level-goal" class="text-gray-700">获得 <span id="target-score">1000</span> 分</p>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+              <div class="bg-light rounded-lg p-4 shadow-md">
+                <h3 class="font-bold text-lg mb-1">得分</h3>
+                <p id="score" class="text-2xl font-bold text-primary">0</p>
+              </div>
+              
+              <div class="bg-light rounded-lg p-4 shadow-md">
+                <h3 class="font-bold text-lg mb-1">步数</h3>
+                <p id="moves-left" class="text-2xl font-bold text-secondary">20</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="bg-light rounded-lg p-4 shadow-md mb-6">
+            <h3 class="font-bold text-lg mb-2">关卡奖励</h3>
+            <div class="flex items-center">
+              <div class="flex -space-x-2">
+                <div class="w-10 h-10 rounded-full bg-accent flex items-center justify-center shadow-md">
+                  <i class="fa fa-star text-white"></i>
+                </div>
+                <div class="w-10 h-10 rounded-full bg-accent/80 flex items-center justify-center shadow-md">
+                  <i class="fa fa-star text-white"></i>
+                </div>
+                <div class="w-10 h-10 rounded-full bg-accent/60 flex items-center justify-center shadow-md">
+                  <i class="fa fa-star text-white"></i>
+                </div>
+              </div>
+              <div class="ml-4">
+                <p class="text-sm text-gray-600">3星评分需要达到 <span id="star-1">500</span>/<span id="star-2">800</span>/<span id="star-3">1000</span> 分</p>
+              </div>
+            </div>
+          </div>
+          
+          <button id="restart-level-btn" class="btn-hover w-full py-3 px-6 bg-secondary text-white rounded-lg text-lg font-bold shadow-md transition-all">
+            <i class="fa fa-refresh mr-2"></i>重新开始
+          </button>
+        </div>
+        
+        <div class="lg:col-span-2">
+          <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-6">
+            <div class="aspect-square max-w-md mx-auto relative">
+              <div id="game-board" class="grid grid-cols-6 gap-2 w-full h-full">
+                </div>
+              
+              <div id="game-start-overlay" class="absolute inset-0 bg-dark/80 rounded-xl flex flex-col items-center justify-center z-10">
+                <h3 class="text-2xl font-bold text-white mb-4">关卡 <span id="overlay-level">1</span></h3>
+                <p class="text-white/80 mb-6 text-center px-6" id="overlay-goal">获得 1000 分</p>
+                <button id="start-level-btn" class="btn-hover py-3 px-6 bg-primary text-white rounded-lg text-lg font-bold shadow-md transition-all">
+                  <i class="fa fa-play mr-2"></i>开始
+                </button>
+              </div>
+              
+              <div id="game-win-overlay" class="absolute inset-0 bg-primary/90 rounded-xl flex flex-col items-center justify-center z-10 hidden">
+                <div class="text-center">
+                  <i class="fa fa-trophy text-accent text-5xl mb-4"></i>
+                  <h3 class="text-2xl font-bold text-white mb-2">恭喜过关！</h3>
+                  <p class="text-white/80 mb-2">得分: <span id="final-score">0</span></p>
+                  <div class="flex justify-center mb-6">
+                    <div id="stars-container" class="flex space-x-2">
+                      </div>
+                  </div>
+                  <div class="flex space-x-3">
+                    <button id="next-level-btn" class="btn-hover py-2 px-4 bg-white text-primary rounded-lg font-bold shadow-md transition-all">
+                      下一关
+                    </button>
+                    <button id="restart-win-btn" class="btn-hover py-2 px-4 bg-accent text-white rounded-lg font-bold shadow-md transition-all">
+                      重新开始
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <div id="game-lose-overlay" class="absolute inset-0 bg-dark/80 rounded-xl flex flex-col items-center justify-center z-10 hidden">
+                <div class="text-center">
+                  <i class="fa fa-times-circle text-primary text-5xl mb-4"></i>
+                  <h3 class="text-2xl font-bold text-white mb-2">挑战失败</h3>
+                  <p class="text-white/80 mb-6">得分: <span id="final-score-lose">0</span></p>
+                  <div class="flex space-x-3">
+                    <button id="try-again-btn" class="btn-hover py-2 px-4 bg-primary text-white rounded-lg font-bold shadow-md transition-all">
+                      再试一次
+                    </button>
+                    <button id="select-level-lose-btn" class="btn-hover py-2 px-4 bg-white text-dark rounded-lg font-bold shadow-md transition-all">
+                      选择关卡
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <div id="no-matches-overlay" class="absolute inset-0 bg-dark/70 rounded-xl flex items-center justify-center z-10 hidden">
+                <div class="bg-white p-6 rounded-xl text-center shadow-2xl">
+                  <i class="fa fa-exclamation-circle text-accent text-4xl mb-4"></i>
+                  <h3 class="text-xl font-bold text-dark mb-2">无法消除</h3>
+                  <p class="text-gray-600 mb-4">当前没有可消除的组合，游戏将自动重新生成布局</p>
+                  <button id="regenerate-btn" class="btn-hover py-2 px-6 bg-primary text-white rounded-lg font-bold shadow-md transition-all">
+                    重新生成
+                  </button>
+                </div>
+              </div>
+              
+              <div id="performance-warning" class="absolute inset-0 bg-dark/70 rounded-xl flex items-center justify-center z-10 hidden">
+                <div class="bg-white p-6 rounded-xl text-center shadow-2xl">
+                  <i class="fa fa-bolt text-accent text-4xl mb-4"></i>
+                  <h3 class="text-xl font-bold text-dark mb-2">性能警告</h3>
+                  <p class="text-gray-600 mb-4">检测到游戏性能不佳，已自动优化动画效果以保持流畅度</p>
+                  <button id="continue-btn" class="btn-hover py-2 px-6 bg-primary text-white rounded-lg font-bold shadow-md transition-all">
+                    继续游戏
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="bg-white/80 backdrop-blur-sm shadow-inner py-4 mt-8">
+    <div class="container mx-auto px-4 text-center text-gray-600 text-sm">
+      <p>© 2025 开元消消乐 | Designed by 开元</p>
+    </div>
+  </footer>
+
+  <script>
+    // Utility function for delays (Promisified setTimeout)
+    const delay = ms => new Promise(res => setTimeout(res, ms));
+
+    // Game configuration
+    const gameConfig = {
+      tileTypes: ['🍎', '🍌', '🍇', '🍊', '🍓', '🍉'],
+      boardSize: 6,
+      animationDuration: 300, // Duration for most animations (milliseconds)
+      levels: [
+        { id: 1, targetScore: 1000, moves: 20, stars: [500, 800, 1000] },
+        { id: 2, targetScore: 1500, moves: 25, stars: [800, 1200, 1500] },
+        { id: 3, targetScore: 2000, moves: 30, stars: [1200, 1600, 2000] },
+        { id: 4, targetScore: 2500, moves: 35, stars: [1500, 2000, 2500] },
+        { id: 5, targetScore: 3000, moves: 40, stars: [2000, 2500, 3000] }
+      ]
+    };
+
+    // Game state
+    const gameState = {
+      currentLevel: 1,
+      score: 0,
+      movesLeft: 0,
+      selectedTile: null, // Stores {row, col, element}
+      board: [], // 2D array of tile types
+      isBusy: false, // Prevents new interactions during animations/processing
+      useAnimations: true,
+      lastAnimationStartTime: 0,
+      animationTimeoutHandle: null,
+      performanceMetrics: {
+        animationOverTimeCount: 0,
+        performanceWarningThreshold: 5 // How many consecutive animation overruns before warning
+      }
+    };
+
+    // DOM elements
+    const screens = {
+      welcome: document.getElementById('welcome-screen'),
+      levels: document.getElementById('levels-screen'),
+      help: document.getElementById('help-screen'),
+      game: document.getElementById('game-screen')
+    };
+
+    const elements = {
+      gameBoard: document.getElementById('game-board'),
+      score: document.getElementById('score'),
+      movesLeft: document.getElementById('moves-left'),
+      currentLevel: document.getElementById('current-level'),
+      targetScore: document.getElementById('target-score'),
+      star1: document.getElementById('star-1'),
+      star2: document.getElementById('star-2'),
+      star3: document.getElementById('star-3'),
+      gameStartOverlay: document.getElementById('game-start-overlay'),
+      overlayLevel: document.getElementById('overlay-level'),
+      overlayGoal: document.getElementById('overlay-goal'),
+      gameWinOverlay: document.getElementById('game-win-overlay'),
+      gameLoseOverlay: document.getElementById('game-lose-overlay'),
+      finalScore: document.getElementById('final-score'),
+      finalScoreLose: document.getElementById('final-score-lose'),
+      starsContainer: document.getElementById('stars-container'),
+      levelGoal: document.getElementById('level-goal'),
+      levelsContainer: document.getElementById('levels-screen').querySelector('.grid'),
+      noMatchesOverlay: document.getElementById('no-matches-overlay'),
+      regenerateBtn: document.getElementById('regenerate-btn'),
+      performanceWarning: document.getElementById('performance-warning'),
+      continueBtn: document.getElementById('continue-btn')
+    };
+
+    // Event listeners
+    document.getElementById('start-game-btn').addEventListener('click', startGame);
+    document.getElementById('select-level-btn').addEventListener('click', showLevels);
+    document.getElementById('levels-btn').addEventListener('click', showLevels);
+    document.getElementById('help-btn').addEventListener('click', showHelp);
+    document.getElementById('back-from-help-btn').addEventListener('click', showWelcome);
+    document.getElementById('back-btn').addEventListener('click', showLevels);
+    document.getElementById('restart-level-btn').addEventListener('click', restartLevel);
+    document.getElementById('start-level-btn').addEventListener('click', startLevel);
+    document.getElementById('next-level-btn').addEventListener('click', nextLevel);
+    document.getElementById('restart-win-btn').addEventListener('click', restartLevel);
+    document.getElementById('try-again-btn').addEventListener('click', restartLevel);
+    document.getElementById('select-level-lose-btn').addEventListener('click', showLevels);
+    document.getElementById('home-btn').addEventListener('click', showWelcome);
+    elements.regenerateBtn.addEventListener('click', () => {
+      elements.noMatchesOverlay.classList.add('hidden');
+      regenerateBoard();
+    });
+    elements.continueBtn.addEventListener('click', () => {
+      elements.performanceWarning.classList.add('hidden');
+      gameState.useAnimations = false;
+      gameState.performanceMetrics.animationOverTimeCount = 0; // Reset counter
+    });
+
+    // --- Core Game Logic ---
+
+    // Initializes the game on load
+    function initGame() {
+      generateLevels();
+    }
+
+    // Generates level selection buttons
+    function generateLevels() {
+      elements.levelsContainer.innerHTML = '';
+      gameConfig.levels.forEach(level => {
+        const levelEl = document.createElement('div');
+        levelEl.className = 'bg-white rounded-xl shadow-md p-4 flex flex-col items-center text-center btn-hover';
+        levelEl.innerHTML = `
+          <div class="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center text-xl font-bold mb-2">
+            ${level.id}
+          </div>
+          <h3 class="font-bold">关卡 ${level.id}</h3>
+          <p class="text-sm text-gray-600">目标: ${level.targetScore}分</p>
+        `;
+        levelEl.addEventListener('click', () => selectLevel(level.id));
+        elements.levelsContainer.appendChild(levelEl);
+      });
+    }
+
+    // --- Screen Navigation ---
+
+    function showScreen(screenToShow) {
+      Object.values(screens).forEach(screen => {
+        screen.classList.add('hidden');
+      });
+      screenToShow.classList.remove('hidden');
+    }
+
+    function showWelcome() { showScreen(screens.welcome); }
+    function showLevels() { showScreen(screens.levels); }
+    function showHelp() { showScreen(screens.help); }
+    function startGame() { selectLevel(1); } // Start game at level 1
+
+    // Selects and loads a game level
+    function selectLevel(levelId) {
+      gameState.currentLevel = levelId;
+      loadLevel(levelId);
+      showScreen(screens.game);
+    }
+
+    // Loads level data and prepares the game board
+    function loadLevel(levelId) {
+      const level = gameConfig.levels[levelId - 1];
+      if (!level) {
+        console.error("Level not found:", levelId);
+        return;
+      }
+      
+      gameState.score = 0;
+      gameState.movesLeft = level.moves;
+      gameState.selectedTile = null;
+      gameState.isBusy = false;
+
+      // Update UI with level info
+      elements.currentLevel.textContent = levelId;
+      elements.targetScore.textContent = level.targetScore;
+      elements.score.textContent = '0';
+      elements.movesLeft.textContent = level.moves;
+      elements.star1.textContent = level.stars[0];
+      elements.star2.textContent = level.stars[1];
+      elements.star3.textContent = level.stars[2];
+      elements.levelGoal.innerHTML = `获得 <span id="target-score">${level.targetScore}</span> 分`;
+      
+      elements.overlayLevel.textContent = levelId;
+      elements.overlayGoal.textContent = `获得 ${level.targetScore} 分`;
+      
+      // Generate and display game board
+      generateBoard();
+      
+      // Hide all overlays, then show start overlay
+      elements.gameStartOverlay.classList.remove('hidden');
+      elements.gameWinOverlay.classList.add('hidden');
+      elements.gameLoseOverlay.classList.add('hidden');
+      elements.noMatchesOverlay.classList.add('hidden');
+      elements.performanceWarning.classList.add('hidden');
+    }
+
+    // Starts the level after the initial overlay
+    function startLevel() {
+      elements.gameStartOverlay.classList.add('hidden');
+    }
+
+    // Creates the initial game board logic and UI elements
+    function generateBoard() {
+      elements.gameBoard.innerHTML = '';
+      elements.gameBoard.style.gridTemplateColumns = `repeat(${gameConfig.boardSize}, 1fr)`;
+      
+      let attempts = 0;
+      let boardGenerated = false;
+
+      while (!boardGenerated && attempts < 100) { // Limit attempts to prevent infinite loops
+        gameState.board = [];
+        for (let r = 0; r < gameConfig.boardSize; r++) {
+          gameState.board[r] = [];
+          for (let c = 0; c < gameConfig.boardSize; c++) {
+            let tileType;
+            do {
+              tileType = gameConfig.tileTypes[Math.floor(Math.random() * gameConfig.tileTypes.length)];
+            } while (
+              // Prevent 3-in-a-row during initial generation
+              (c >= 2 && gameState.board[r][c-1] === tileType && gameState.board[r][c-2] === tileType) ||
+              (r >= 2 && gameState.board[r-1][c] === tileType && gameState.board[r-2][c] === tileType)
+            );
+            gameState.board[r][c] = tileType;
+          }
+        }
+        
+        if (hasPossibleMoves() && findMatches().length === 0) { // Ensure solvability and no initial matches
+          boardGenerated = true;
+        }
+        attempts++;
+      }
+
+      if (!boardGenerated) {
+        console.warn("Could not generate a solvable board without initial matches after many attempts. Forcing a solvable layout.");
+        createRandomBoard(); 
+        let shuffleAttempts = 0;
+        while(!hasPossibleMoves() && shuffleAttempts < 10) {
+            createRandomBoard();
+            shuffleAttempts++;
+        }
+        if(!hasPossibleMoves()){
+            console.error("Even after forced shuffles, no possible moves found. This level might be truly unsolvable.");
+        }
+    }
+      
+      // Initial render with fall animation
+      updateBoardUI(true); 
+    }
+
+    // Helper to create a random board (used for fallbacks)
+    function createRandomBoard() {
+        gameState.board = [];
+        for (let r = 0; r < gameConfig.boardSize; r++) {
+            gameState.board[r] = [];
+            for (let c = 0; c < gameConfig.boardSize; c++) {
+                gameState.board[r][c] = gameConfig.tileTypes[Math.floor(Math.random() * gameConfig.tileTypes.length)];
+            }
+        }
+    }
+
+    // Creates a single tile DOM element and appends it
+    function createTileElement(row, col, type) {
+      const tile = document.createElement('div');
+      tile.className = 'tile bg-white rounded-lg flex items-center justify-center text-3xl tile-shadow transition-all duration-200 cursor-pointer';
+      tile.dataset.row = row;
+      tile.dataset.col = col;
+      tile.textContent = type;
+      tile.addEventListener('click', () => handleTileClick(row, col));
+      return tile;
+    }
+
+    // Retrieves a tile DOM element by its grid coordinates
+    function getTileElement(row, col) {
+      return elements.gameBoard.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+    }
+    
+    // Updates the entire board UI based on the gameState.board
+    // 'initialRender' flag indicates if it's the very first render, triggering fall animations
+    async function updateBoardUI(initialRender = false) {
+        elements.gameBoard.innerHTML = ''; // Clear existing tiles
+        const animationPromises = [];
+
+        for (let row = 0; row < gameConfig.boardSize; row++) {
+            for (let col = 0; col < gameConfig.boardSize; col++) {
+                const type = gameState.board[row][col];
+                if (type !== null) {
+                    const tile = createTileElement(row, col, type);
+                    if (initialRender && gameState.useAnimations) {
+                        // Stagger the animation slightly for initial fall
+                        setTimeout(() => {
+                            tile.classList.add('tile-fall');
+                            animationPromises.push(new Promise(resolve => {
+                                tile.addEventListener('animationend', function handler() {
+                                    tile.classList.remove('tile-fall');
+                                    tile.removeEventListener('animationend', handler);
+                                    resolve();
+                                }, { once: true });
+                            }));
+                        }, row * 50 + col * 20); // Small delay for staggered fall
+                    }
+                    elements.gameBoard.appendChild(tile);
+                }
+            }
+        }
+        if (initialRender && gameState.useAnimations) {
+            // Wait for all initial fall animations to complete
+            await Promise.all(animationPromises);
+        }
+    }
+
+
+    // Handles user clicks on tiles
+    async function handleTileClick(row, col) {
+      if (gameState.isBusy) return; // Prevent interaction during animations/processing
+
+      const tile = getTileElement(row, col);
+      
+      if (!gameState.selectedTile) {
+        // First tile selected
+        gameState.selectedTile = { row, col, element: tile };
+        tile.classList.add('tile-selected');
+      } else {
+        // Second tile selected
+        const selectedRow = gameState.selectedTile.row;
+        const selectedCol = gameState.selectedTile.col;
+        
+        // Deselect first tile visually
+        gameState.selectedTile.element.classList.remove('tile-selected');
+
+        if (
+          (Math.abs(row - selectedRow) === 1 && col === selectedCol) || // Adjacent vertically
+          (Math.abs(col - selectedCol) === 1 && row === selectedRow)    // Adjacent horizontally
+        ) {
+          // Valid adjacent swap
+          gameState.isBusy = true; // Lock game interaction
+          const hasMatches = await swapTiles(selectedRow, selectedCol, row, col);
+          gameState.selectedTile = null; // Clear selection after swap attempt
+          
+          if (hasMatches) {
+            await processGameCycle(); // Start the match processing cycle
+          } else {
+            // If no match, swap back logically (already handled in swapTiles animations)
+            // No need to process game cycle
+          }
+          gameState.isBusy = false; // Unlock game interaction
+        } else {
+          // Not adjacent or same tile, re-select new tile
+          gameState.selectedTile = { row, col, element: tile };
+          tile.classList.add('tile-selected');
+        }
+      }
+    }
+
+    // Swaps two tiles in the game board logic and visually
+    async function swapTiles(row1, col1, row2, col2) {
+        const tile1 = getTileElement(row1, col1);
+        const tile2 = getTileElement(row2, col2);
+
+        // Store original data-attributes and content
+        const originalTile1Data = { row: tile1.dataset.row, col: tile1.dataset.col };
+        const originalTile2Data = { row: tile2.dataset.row, col: tile2.dataset.col };
+        const originalTile1Content = tile1.textContent;
+        const originalTile2Content = tile2.textContent;
+
+        // Perform the logical swap first
+        [gameState.board[row1][col1], gameState.board[row2][col2]] = 
+        [gameState.board[row2][col2], gameState.board[row1][col1]];
+
+        let hasMatchesAfterSwap = findMatches().length > 0;
+
+        if (gameState.useAnimations) {
+            // Get positions for absolute positioning
+            const boardRect = elements.gameBoard.getBoundingClientRect();
+            const tile1Rect = tile1.getBoundingClientRect();
+            const tile2Rect = tile2.getBoundingClientRect();
+
+            // Apply absolute positioning for animation
+            tile1.classList.add('tile-swapping');
+            tile2.classList.add('tile-swapping');
+
+            // Set initial absolute positions
+            tile1.style.left = `${tile1Rect.left - boardRect.left}px`;
+            tile1.style.top = `${tile1Rect.top - boardRect.top}px`;
+            tile1.style.width = `${tile1Rect.width}px`;
+            tile1.style.height = `${tile1Rect.height}px`;
+
+            tile2.style.left = `${tile2Rect.left - boardRect.left}px`;
+            tile2.style.top = `${tile2Rect.top - boardRect.top}px`;
+            tile2.style.width = `${tile2Rect.width}px`;
+            tile2.style.height = `${tile2Rect.height}px`;
+
+            // Update content immediately for visual consistency (they are position absolute now)
+            tile1.textContent = gameState.board[row2][col2]; // tile1 now displays content of tile2's original position
+            tile2.textContent = gameState.board[row1][col1]; // tile2 now displays content of tile1's original position
+
+            // Trigger reflow
+            void tile1.offsetWidth; 
+            void tile2.offsetWidth;
+
+            // Animate to new positions
+            tile1.style.transition = `all ${gameConfig.animationDuration / 1000}s ease-in-out`;
+            tile2.style.transition = `all ${gameConfig.animationDuration / 1000}s ease-in-out`;
+            tile1.style.left = `${tile2Rect.left - boardRect.left}px`;
+            tile1.style.top = `${tile2Rect.top - boardRect.top}px`;
+            tile2.style.left = `${tile1Rect.left - boardRect.left}px`;
+            tile2.style.top = `${tile1Rect.top - boardRect.top}px`;
+
+            await delay(gameConfig.animationDuration); // Wait for animation to complete
+
+            // Reset transition and remove absolute positioning
+            tile1.style.transition = '';
+            tile2.style.transition = '';
+            tile1.classList.remove('tile-swapping');
+            tile2.classList.remove('tile-swapping');
+            tile1.style.left = ''; tile1.style.top = '';
+            tile2.style.left = ''; tile2.style.top = '';
+            tile1.style.width = ''; tile1.style.height = '';
+            tile2.style.width = ''; tile2.style.height = '';
+
+            // Update data-attributes to reflect swapped positions
+            tile1.dataset.row = originalTile2Data.row;
+            tile1.dataset.col = originalTile2Data.col;
+            tile2.dataset.row = originalTile1Data.row;
+            tile2.dataset.col = originalTile1Data.col;
+
+            if (!hasMatchesAfterSwap) {
+                // Swap back logically
+                [gameState.board[row1][col1], gameState.board[row2][col2]] = 
+                [gameState.board[row2][col2], gameState.board[row1][col1]];
+
+                // Animate back
+                tile1.classList.add('tile-swapping');
+                tile2.classList.add('tile-swapping');
+
+                tile1.style.left = `${tile2Rect.left - boardRect.left}px`;
+                tile1.style.top = `${tile2Rect.top - boardRect.top}px`;
+                tile2.style.left = `${tile1Rect.left - boardRect.left}px`;
+                tile2.style.top = `${tile1Rect.top - boardRect.top}px`;
+                tile1.style.width = `${tile1Rect.width}px`;
+                tile1.style.height = `${tile1Rect.height}px`;
+                tile2.style.width = `${tile2Rect.width}px`;
+                tile2.style.height = `${tile2Rect.height}px`;
+
+                // Update content back
+                tile1.textContent = originalTile1Content;
+                tile2.textContent = originalTile2Content;
+
+                // Trigger reflow
+                void tile1.offsetWidth; 
+                void tile2.offsetWidth;
+
+                tile1.style.transition = `all ${gameConfig.animationDuration / 1000}s ease-in-out`;
+                tile2.style.transition = `all ${gameConfig.animationDuration / 1000}s ease-in-out`;
+                tile1.style.left = `${tile1Rect.left - boardRect.left}px`;
+                tile1.style.top = `${tile1Rect.top - boardRect.top}px`;
+                tile2.style.left = `${tile2Rect.left - boardRect.left}px`;
+                tile2.style.top = `${tile1Rect.top - boardRect.top}px`;
+
+                await delay(gameConfig.animationDuration); // Wait for animation to complete
+
+                // Clean up absolute positioning
+                tile1.style.transition = '';
+                tile2.style.transition = '';
+                tile1.classList.remove('tile-swapping');
+                tile2.classList.remove('tile-swapping');
+                tile1.style.left = ''; tile1.style.top = '';
+                tile2.style.left = ''; tile2.style.top = '';
+                tile1.style.width = ''; tile1.style.height = '';
+                tile2.style.width = ''; tile2.style.height = '';
+
+                // Restore data-attributes to original
+                tile1.dataset.row = originalTile1Data.row;
+                tile1.dataset.col = originalTile1Data.col;
+                tile2.dataset.row = originalTile2Data.row;
+                tile2.dataset.col = originalTile2Data.col;
+            }
+        } else {
+            // No animation: just update text content and data-attributes directly
+            tile1.textContent = gameState.board[row2][col2]; // Content after logical swap
+            tile2.textContent = gameState.board[row1][col1];
+
+            // Update data-attributes immediately for consistency
+            tile1.dataset.row = originalTile2Data.row;
+            tile1.dataset.col = originalTile2Data.col;
+            tile2.dataset.row = originalTile1Data.row;
+            tile2.dataset.col = originalTile1Data.col;
+
+            if (!hasMatchesAfterSwap) {
+                // Swap back logically
+                [gameState.board[row1][col1], gameState.board[row2][col2]] = 
+                [gameState.board[row2][col2], gameState.board[row1][col1]];
+                tile1.textContent = originalTile1Content; // Content after logical swap back
+                tile2.textContent = originalTile2Content;
+
+                // Restore data-attributes
+                tile1.dataset.row = originalTile1Data.row;
+                tile1.dataset.col = originalTile1Data.col;
+                tile2.dataset.row = originalTile2Data.row;
+                tile2.dataset.col = originalTile2Data.col;
+            }
+        }
+        return hasMatchesAfterSwap;
+    }
+
+
+    // Main game processing loop after a swap or cascade
+    async function processGameCycle() {
+        let matches = findMatches();
+        let combos = 0; // Track consecutive matches
+
+        while (matches.length > 0) {
+            combos++;
+            // Process matches (remove, update score)
+            await processMatches(matches, combos); // This will nullify matched tiles
+
+            // Tiles fall down (logical update only)
+            dropTilesLogical();
+
+            // New tiles fill empty spots (logical update only)
+            generateNewTilesLogical();
+
+            // Update UI after all logical movements and new tile generation
+            // And apply fall animations to newly positioned tiles
+            await updateBoardUIWithFallAnimation();
+
+            // Check for new matches created by falling/new tiles (cascade effect)
+            matches = findMatches();
+        }
+
+        // After all cascades, reduce moves and check game state
+        if (combos > 0) { // Only reduce moves if a successful match occurred
+            gameState.movesLeft--;
+            elements.movesLeft.textContent = gameState.movesLeft;
+        }
+
+        // Check for possible moves on the board
+        if (!hasPossibleMoves()) {
+            elements.noMatchesOverlay.classList.remove('hidden');
+        }
+
+        checkGameState();
+    }
+
+    // Finds all matches (horizontal and vertical) on the board
+    function findMatches() {
+      const matches = [];
+      const markedForRemoval = new Set(); // Use a set to avoid duplicates
+
+      // Horizontal matches
+      for (let r = 0; r < gameConfig.boardSize; r++) {
+        for (let c = 0; c < gameConfig.boardSize - 2; c++) {
+          const type = gameState.board[r][c];
+          if (type !== null && type === gameState.board[r][c+1] && type === gameState.board[r][c+2]) {
+            let matchLength = 3;
+            while (c + matchLength < gameConfig.boardSize && gameState.board[r][c + matchLength] === type) {
+              matchLength++;
+            }
+            for (let i = 0; i < matchLength; i++) {
+              markedForRemoval.add(`${r},${c + i}`);
+            }
+            c += matchLength - 1; // Skip already matched tiles
+          }
+        }
+      }
+
+      // Vertical matches
+      for (let c = 0; c < gameConfig.boardSize; c++) {
+        for (let r = 0; r < gameConfig.boardSize - 2; r++) {
+          const type = gameState.board[r][c];
+          if (type !== null && type === gameState.board[r+1][c] && type === gameState.board[r+2][c]) {
+            let matchLength = 3;
+            while (r + matchLength < gameConfig.boardSize && gameState.board[r + matchLength][c] === type) {
+              matchLength++;
+            }
+            for (let i = 0; i < matchLength; i++) {
+              markedForRemoval.add(`${r + i},${c}`);
+            }
+            r += matchLength - 1; // Skip already matched tiles
+          }
+        }
+      }
+      
+      // Convert set of string coordinates to a list of objects for processing
+      markedForRemoval.forEach(coord => {
+          const [row, col] = coord.split(',').map(Number);
+          matches.push({row, col, type: gameState.board[row][col]});
+      });
+      return matches;
+    }
+
+    // Checks if there are any valid moves possible on the current board
+    function hasPossibleMoves() {
+      // Iterate through each tile
+      for (let r = 0; r < gameConfig.boardSize; r++) {
+        for (let c = 0; c < gameConfig.boardSize; c++) {
+          const originalType = gameState.board[r][c];
+
+          // Try swapping with adjacent tiles (right and down)
+          const neighbors = [[r, c + 1], [r + 1, c]];
+
+          for (const [nr, nc] of neighbors) {
+            if (nr >= 0 && nr < gameConfig.boardSize && nc >= 0 && nc < gameConfig.boardSize) {
+              // Perform a speculative swap
+              const neighborType = gameState.board[nr][nc];
+              gameState.board[r][c] = neighborType;
+              gameState.board[nr][nc] = originalType;
+
+              // Check for matches after the speculative swap
+              if (findMatches().length > 0) {
+                // If a match is found, revert the swap and return true
+                gameState.board[r][c] = originalType;
+                gameState.board[nr][nc] = neighborType;
+                return true;
+              }
+
+              // Revert the swap for the next iteration
+              gameState.board[r][c] = originalType;
+              gameState.board[nr][nc] = neighborType;
+            }
+          }
+        }
+      }
+      return false;
+    }
+
+    // Processes identified matches: removes tiles, updates score, plays animations
+    async function processMatches(matches, comboCount) {
+        if (matches.length === 0) return;
+
+        let totalPoints = 0;
+        const animationPromises = [];
+        const scorePopupElements = [];
+
+        matches.forEach(match => {
+            const { row, col } = match;
+            const tileElement = getTileElement(row, col);
+
+            if (tileElement) {
+                totalPoints += 10; // Basic score per tile
+                // Add bonus for combos if desired: totalPoints += 10 * comboCount;
+
+                if (gameState.useAnimations) {
+                    tileElement.classList.add('tile-remove');
+
+                    // Score popup animation
+                    const scorePopup = document.createElement('div');
+                    scorePopup.className = 'absolute score-popup text-xl font-bold text-primary';
+                    scorePopup.textContent = `+10`; // Display individual tile score
+                    
+                    const rect = tileElement.getBoundingClientRect();
+                    const boardRect = elements.gameBoard.getBoundingClientRect();
+                    scorePopup.style.left = `${rect.left - boardRect.left + rect.width / 2}px`;
+                    scorePopup.style.top = `${rect.top - boardRect.top + rect.height / 2}px`;
+                    scorePopup.style.transform = 'translate(-50%, -50%)';
+                    elements.gameBoard.appendChild(scorePopup);
+                    scorePopupElements.push(scorePopup);
+
+                    animationPromises.push(new Promise(resolve => {
+                        tileElement.addEventListener('animationend', function handler() {
+                            tileElement.removeEventListener('animationend', handler);
+                            resolve();
+                        }, { once: true });
+                    }));
+                }
+                // Mark tile as null in game state for removal
+                gameState.board[row][col] = null; 
+            }
+        });
+
+        gameState.score += totalPoints;
+        elements.score.textContent = gameState.score;
+
+        if (gameState.useAnimations) {
+            await Promise.all(animationPromises);
+            // After animations, clean up elements and hide
+            matches.forEach(match => {
+                const tileElement = getTileElement(match.row, match.col);
+                if (tileElement) {
+                    tileElement.textContent = ''; // Clear content
+                    tileElement.style.visibility = 'hidden';
+                    tileElement.classList.remove('tile-remove'); // Clean up class
+                }
+            });
+            scorePopupElements.forEach(el => el.remove()); // Remove all score popups
+            await delay(50); // Small delay to ensure all DOM updates are processed
+        } else {
+            // Instant removal for no-animation mode
+            matches.forEach(match => {
+                const tileElement = getTileElement(match.row, match.col);
+                if (tileElement) {
+                    tileElement.textContent = '';
+                    tileElement.style.visibility = 'hidden';
+                }
+            });
+        }
+    }
+
+
+    // LOGICAL: Makes tiles fall to fill empty spaces
+    function dropTilesLogical() {
+        for (let c = 0; c < gameConfig.boardSize; c++) {
+            let emptySpaces = 0;
+            for (let r = gameConfig.boardSize - 1; r >= 0; r--) {
+                if (gameState.board[r][c] === null) {
+                    emptySpaces++;
+                } else if (emptySpaces > 0) {
+                    gameState.board[r + emptySpaces][c] = gameState.board[r][c];
+                    gameState.board[r][c] = null;
+                }
+            }
+        }
+    }
+
+
+    // LOGICAL: Fills empty spaces at the top with new random tiles
+    function generateNewTilesLogical() {
+        for (let c = 0; c < gameConfig.boardSize; c++) {
+            for (let r = 0; r < gameConfig.boardSize; r++) {
+                if (gameState.board[r][c] === null) {
+                    gameState.board[r][c] = gameConfig.tileTypes[Math.floor(Math.random() * gameConfig.tileTypes.length)];
+                }
+            }
+        }
+    }
+
+    // Updates the board UI and applies fall animation for new/moved tiles
+    async function updateBoardUIWithFallAnimation() {
+        elements.gameBoard.innerHTML = ''; // Clear existing tiles
+        const animationPromises = [];
+
+        for (let row = 0; row < gameConfig.boardSize; row++) {
+            for (let col = 0; col < gameConfig.boardSize; col++) {
+                const type = gameState.board[row][col];
+                if (type !== null) {
+                    const tile = createTileElement(row, col, type);
+                    
+                    // Always add fall animation if using animations and it's not the initial render
+                    // This creates new elements and makes them fall from "above"
+                    if (gameState.useAnimations) {
+                        // Apply tile-fall class to newly created elements
+                        tile.classList.add('tile-fall');
+                        animationPromises.push(new Promise(resolve => {
+                            tile.addEventListener('animationend', function handler() {
+                                tile.classList.remove('tile-fall');
+                                tile.removeEventListener('animationend', handler);
+                                resolve();
+                            }, { once: true });
+                        }));
+                    }
+                    elements.gameBoard.appendChild(tile);
+                }
+            }
+        }
+        if (gameState.useAnimations) {
+            // Wait for all fall animations to complete
+            await Promise.all(animationPromises);
+            await delay(50); // Small buffer after animation
+        }
+    }
+
+
+    // Regenerates the entire board if no moves are possible
+    async function regenerateBoard() {
+      gameState.isBusy = true; // Lock game interactions
+      elements.noMatchesOverlay.classList.add('hidden'); // Hide the overlay
+
+      const removePromises = [];
+      if (gameState.useAnimations) {
+        // Add remove animation to all existing tiles
+        elements.gameBoard.querySelectorAll('.tile').forEach(tile => {
+          tile.classList.add('tile-remove');
+          removePromises.push(new Promise(resolve => {
+            tile.addEventListener('animationend', function handler() {
+              tile.removeEventListener('animationend', handler);
+              resolve();
+            }, { once: true });
+          }));
+        });
+        await Promise.all(removePromises); // Wait for all tiles to "shrink"
+        await delay(50); // Small buffer after removal
+      }
+
+      // Re-generate board logic and UI elements
+      generateBoard(); // This will create new tile elements and apply fall animations
+      
+      gameState.isBusy = false; // Unlock game interactions
+    }
+
+    // Checks game win/lose conditions
+    function checkGameState() {
+      const level = gameConfig.levels[gameState.currentLevel - 1];
+      
+      if (gameState.score >= level.targetScore) {
+        showWinScreen();
+      } else if (gameState.movesLeft <= 0) {
+        // If no moves left AND no possible moves on board, it's a loss
+        // If there are still possible moves but movesLeft is 0, it's a loss
+        showLoseScreen();
+      }
+    }
+
+    // Displays the win screen
+    function showWinScreen() {
+      elements.finalScore.textContent = gameState.score;
+      
+      const level = gameConfig.levels[gameState.currentLevel - 1];
+      let stars = 0;
+      if (gameState.score >= level.stars[2]) stars = 3;
+      else if (gameState.score >= level.stars[1]) stars = 2;
+      else if (gameState.score >= level.stars[0]) stars = 1;
+      
+      elements.starsContainer.innerHTML = '';
+      for (let i = 0; i < 3; i++) {
+        const star = document.createElement('div');
+        star.className = `w-10 h-10 rounded-full flex items-center justify-center text-2xl ${
+          i < stars ? 'bg-accent text-white' : 'bg-gray-200 text-gray-400'
+        }`;
+        star.innerHTML = '<i class="fa fa-star"></i>';
+        elements.starsContainer.appendChild(star);
+      }
+      elements.gameWinOverlay.classList.remove('hidden');
+    }
+
+    // Displays the lose screen
+    function showLoseScreen() {
+      elements.finalScoreLose.textContent = gameState.score;
+      elements.gameLoseOverlay.classList.remove('hidden');
+    }
+
+    // Restarts the current level
+    function restartLevel() {
+      loadLevel(gameState.currentLevel);
+    }
+
+    // Advances to the next level
+    function nextLevel() {
+      if (gameState.currentLevel < gameConfig.levels.length) {
+        selectLevel(gameState.currentLevel + 1);
+      } else {
+        alert('恭喜你通关了所有关卡！');
+        selectLevel(1); // Loop back to the first level
+      }
+    }
+
+    // Initialize the game when the DOM is ready
+    document.addEventListener('DOMContentLoaded', initGame);
+  </script>
+</body>
+</html>
