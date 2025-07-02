@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>消消乐</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='30' cy='30' r='15' fill='red'/><circle cx='70' cy='30' r='15' fill='blue'/><circle cx='50' cy='70' r='15' fill='green'/><circle cx='30' cy='70' r='15' fill='yellow'/><circle cx='70' cy='70' r='15' fill='purple'/></svg>">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#FF6B6B',
+            secondary: '#4ECDC4',
+            accent: '#FFD166',
+            dark: '#292F36',
+            light: '#F7FFF7'
+          },
+          fontFamily: {
+            game: ['"Comic Sans MS"', '"Marker Felt"', 'Arial', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .tile-shadow {
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), inset 0 -2px 4px 0 rgba(0, 0, 0, 0.05), inset 0 2px 4px 0 rgba(255, 255, 255, 0.2);
+      }
+      .game-title {
+        text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.1);
+      }
+      .btn-hover {
+        transition: all 0.2s ease;
+      }
+      .btn-hover:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      }
+      .tile-selected {
+        animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+      @keyframes pulse {
+        0%, 100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.8;
+          transform: scale(1.05);
+        }
+      }
+      .tile-remove {
+        animation: shrink 0.3s ease forwards;
+      }
+      @keyframes shrink {
+        0% {
+          transform: scale(1);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(0);
+          opacity: 0;
+        }
+      }
+      .tile-fall {
+        animation: fall 0.3s ease-out forwards;
+      }
+      @keyframes fall {
+        0% {
+          transform: translateY(-100%);
+          opacity: 0.5;
+        }
+        100% {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+      .score-popup {
+        animation: popup 1s ease-out forwards;
+        position: absolute;
+        z-index: 20;
+        pointer-events: none;
+      }
+      @keyframes popup {
+        0% {
+          transform: translateY(0) scale(1.2);
+          opacity: 1;
+        }
+        80% {
+          opacity: 1;
+          transform: translateY(-24px) scale(1.1);
+        }
+        100% {
+          transform: translateY(-30px) scale(1);
+          opacity: 0;
+        }
+      }
+      .tile-swapping {
+        position: absolute;
+        z-index: 5;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen font-game text-dark">
+  <header class="bg-white/80 backdrop-blur-sm shadow-md sticky top-0 z-50 transition-all duration-300">
+    <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+      <div class="flex items-center space-x-2">
+        <i class="fa fa-puzzle-piece text-primary text-2xl"></i>
+        <h1 class="text-xl md:text-2xl font-bold text-primary game-title">消消乐</h1>
+      </div>
+<iframe frameborder="no" border="0" marginwidth="0" marginheight="0" width=330 height=86 src="//music.163.com/outchain/player?type=2&id=3019685&auto=0&height=66"></iframe>
+      <nav>
+        <ul class="flex space-x-4 items-center">
+          <li>
+            <button id="home-btn" class="btn-hover px-3 py-1 rounded-md bg-primary/10 text-primary transition-colors hover:bg-primary/20">首页</button>
+          </li>
+          <li>
+            <button id="levels-btn" class="btn-hover px-3 py-1 rounded-md bg-primary/10 text-primary transition-colors hover:bg-primary/20">关卡</button>
+          </li>
+          <li>
+            <button id="help-btn" class="btn-hover px-3 py-1 rounded-md bg-primary/10 text-primary transition-colors hover:bg-primary/20">帮助</button>
+          </li>
+          </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container mx-auto px-4 py-8 flex-grow">
+    <section id="welcome-screen" class="flex flex-col items-center justify-center py-16">
+      <div class="max-w-2xl w-full bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-8 text-center">
+        <div class="mb-8">
+          <i class="fa fa-puzzle-piece text-primary text-5xl mb-4"></i>
+          <h2 class="text-[clamp(2rem,5vw,3rem)] font-bold text-primary mb-2 game-title">消消乐</h2>
+          <p class="text-gray-600 mb-6">消除三个或更多相同的元素，挑战你的眼力和反应能力！</p>
+        </div>
+        <div class="space-y-4 mb-8">
+          <button id="start-game-btn" class="btn-hover w-full py-4 px-6 bg-primary text-white rounded-xl text-xl font-bold shadow-lg transition-all">
+            <i class="fa fa-play-circle mr-2"></i>开始游戏
+          </button>
+          <button id="select-level-btn" class="btn-hover w-full py-4 px-6 bg-secondary text-white rounded-xl text-xl font-bold shadow-lg transition-all">
+            <i class="fa fa-th-large mr-2"></i>选择关卡
+          </button>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+          <div class="bg-light rounded-lg p-4 shadow-md">
+            <i class="fa fa-star text-accent text-3xl mb-2"></i>
+            <h3 class="font-bold text-lg mb-1">多种关卡</h3>
+            <p class="text-sm text-gray-600">一共有5个有趣关卡等你挑战</p>
+          </div>
+          <div class="bg-light rounded-lg p-4 shadow-md">
+            <i class="fa fa-trophy text-accent text-3xl mb-2"></i>
+            <h3 class="font-bold text-lg mb-1">成就系统</h3>
+            <p class="text-sm text-gray-600">解锁各种成就和称号</p>
+          </div>
+          <div class="bg-light rounded-lg p-4 shadow-md">
+            <i class="fa fa-refresh text-accent text-3xl mb-2"></i>
+            <h3 class="font-bold text-lg mb-1">无限乐趣</h3>
+            <p class="text-sm text-gray-600">简单易玩，难于精通</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="levels-screen" class="hidden py-12">
+      <h2 class="text-3xl font-bold text-center text-primary mb-8 game-title">选择关卡</h2>
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4"></div>
+    </section>
+
+    <section id="help-screen" class="hidden py-12 max-w-3xl mx-auto">
+      <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-8">
+        <h2 class="text-3xl font-bold text-center text-primary mb-6 game-title">游戏帮助</h2>
+        <div class="space-y-6">
+          <div class="bg-light rounded-lg p-5 shadow-md">
+            <h3 class="text-xl font-bold text-secondary mb-3"><i class="fa fa-gamepad mr-2"></i>游戏玩法</h3>
+            <p>交换相邻的两个元素，形成三个或更多相同元素的连线。连线可以是水平或垂直的。当你消除元素后，上方的元素会下落，新的元素会从顶部生成。</p>
+          </div>
+          <div class="bg-light rounded-lg p-5 shadow-md">
+            <h3 class="text-xl font-bold text-secondary mb-3"><i class="fa fa-trophy mr-2"></i>游戏目标</h3>
+            <p>每个关卡都有不同的目标，如达到一定分数、消除特定元素或在限定步数内完成任务。查看每个关卡开始时的说明了解具体目标。</p>
+          </div>
+          <div class="bg-light rounded-lg p-5 shadow-md">
+            <h3 class="text-xl font-bold text-secondary mb-3"><i class="fa fa-star mr-2"></i>特殊元素</h3>
+            <ul class="list-disc pl-5 space-y-2">
+              <li><span class="font-bold">炸弹：</span>通过消除5个相同元素形成，可以消除周围3x3范围内的所有元素</li>
+              <li><span class="font-bold">彩虹糖：</span>通过交叉消除两个特殊元素形成，可以消除所有选定类型的元素</li>
+              <li><span class="font-bold">直线消除：</span>通过消除4个相同元素形成，可以消除一行或一列的所有元素</li>
+            </ul>
+          </div>
+          <div class="bg-light rounded-lg p-5 shadow-md">
+            <h3 class="text-xl font-bold text-secondary mb-3"><i class="fa fa-star-half-o mr-2"></i>得分规则</h3>
+            <ul class="list-disc pl-5 space-y-2">
+              <li>基础得分：每个普通消除得10分</li>
+              <li>连续消除：每个后续的连续消除会额外多加4分</li>
+              <li>特殊元素：使用5连消、4连消、横纵交叉元素消除会获得更高分数（每个消除额外多加6分）</li>
+            </ul>
+          </div>
+        </div>
+        <div class="mt-8 text-center">
+          <button id="back-from-help-btn" class="btn-hover py-3 px-6 bg-primary text-white rounded-lg text-lg font-bold shadow-md transition-all">返回</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="game-screen" class="hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-6">
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-primary game-title">关卡 <span id="current-level">1</span></h2>
+            <button id="back-btn" class="btn-hover p-2 rounded-full bg-gray-100 text-gray-600 transition-colors hover:bg-gray-200">
+              <i class="fa fa-arrow-left"></i>
+            </button>
+          </div>
+          <div class="space-y-4 mb-6">
+            <div class="bg-light rounded-lg p-4 shadow-md">
+              <h3 class="font-bold text-lg mb-2">目标</h3>
+              <p id="level-goal" class="text-gray-700">获得 <span id="target-score">1000</span> 分</p>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="bg-light rounded-lg p-4 shadow-md">
+                <h3 class="font-bold text-lg mb-1">得分</h3>
+                <p id="score" class="text-2xl font-bold text-primary">0</p>
+              </div>
+              <div class="bg-light rounded-lg p-4 shadow-md">
+                <h3 class="font-bold text-lg mb-1">步数</h3>
+                <p id="moves-left" class="text-2xl font-bold text-secondary">20</p>
+              </div>
+            </div>
+          </div>
+          <div class="bg-light rounded-lg p-4 shadow-md mb-6">
+            <h3 class="font-bold text-lg mb-2">关卡奖励</h3>
+            <div class="flex items-center">
+              <div class="flex -space-x-2">
+                <div class="w-10 h-10 rounded-full bg-accent flex items-center justify-center shadow-md">
+                  <i class="fa fa-star text-white"></i>
+                </div>
+                <div class="w-10 h-10 rounded-full bg-accent/80 flex items-center justify-center shadow-md">
+                  <i class="fa fa-star text-white"></i>
+                </div>
+                <div class="w-10 h-10 rounded-full bg-accent/60 flex items-center justify-center shadow-md">
+                  <i class="fa fa-star text-white"></i>
+                </div>
+              </div>
+              <div class="ml-4">
+                <p class="text-sm text-gray-600">3星评分需要达到 <span id="star-1">500</span>/<span id="star-2">800</span>/<span id="star-3">1000</span> 分</p>
+              </div>
+            </div>
+          </div>
+          <button id="restart-level-btn" class="btn-hover w-full py-3 px-6 bg-secondary text-white rounded-lg text-lg font-bold shadow-md transition-all">
+            <i class="fa fa-refresh mr-2"></i>重新开始
+          </button>
+        </div>
+        <div class="lg:col-span-2">
+          <div class="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-6">
+            <div class="aspect-square max-w-md mx-auto relative">
+              <div id="game-board" class="grid grid-cols-6 gap-2 w-full h-full"></div>
+              <!-- 新增分数动画容器 -->
+              <div id="score-popup-container" style="pointer-events:none;position:absolute;top:0;left:0;width:100%;height:100%;z-index:25;"></div>
+              <div id="game-start-overlay" class="absolute inset-0 bg-dark/80 rounded-xl flex flex-col items-center justify-center z-10">
+                <h3 class="text-2xl font-bold text-white mb-4">关卡 <span id="overlay-level">1</span></h3>
+                <p class="text-white/80 mb-6 text-center px-6" id="overlay-goal">获得 1000 分</p>
+                <button id="start-level-btn" class="btn-hover py-3 px-6 bg-primary text-white rounded-lg text-lg font-bold shadow-md transition-all">
+                  <i class="fa fa-play mr-2"></i>开始
+                </button>
+              </div>
+              <div id="game-win-overlay" class="absolute inset-0 bg-primary/90 rounded-xl flex flex-col items-center justify-center z-10 hidden">
+                <div class="text-center">
+                  <i class="fa fa-trophy text-accent text-5xl mb-4"></i>
+                  <h3 class="text-2xl font-bold text-white mb-2">恭喜过关！</h3>
+                  <p class="text-white/80 mb-2">得分: <span id="final-score">0</span></p>
+                  <div class="flex justify-center mb-6">
+                    <div id="stars-container" class="flex space-x-2"></div>
+                  </div>
+                  <div class="flex space-x-3">
+                    <button id="next-level-btn" class="btn-hover py-2 px-4 bg-white text-primary rounded-lg font-bold shadow-md transition-all">下一关</button>
+                    <button id="restart-win-btn" class="btn-hover py-2 px-4 bg-accent text-white rounded-lg font-bold shadow-md transition-all">重新开始</button>
+                  </div>
+                </div>
+              </div>
+              <div id="game-lose-overlay" class="absolute inset-0 bg-dark/80 rounded-xl flex flex-col items-center justify-center z-10 hidden">
+                <div class="text-center">
+                  <i class="fa fa-times-circle text-primary text-5xl mb-4"></i>
+                  <h3 class="text-2xl font-bold text-white mb-2">挑战失败</h3>
+                  <p class="text-white/80 mb-6">得分: <span id="final-score-lose">0</span></p>
+                  <div class="flex space-x-3">
+                    <button id="try-again-btn" class="btn-hover py-2 px-4 bg-primary text-white rounded-lg font-bold shadow-md transition-all">再试一次</button>
+                    <button id="select-level-lose-btn" class="btn-hover py-2 px-4 bg-white text-dark rounded-lg font-bold shadow-md transition-all">选择关卡</button>
+                  </div>
+                </div>
+              </div>
+              <div id="no-matches-overlay" class="absolute inset-0 bg-dark/70 rounded-xl flex items-center justify-center z-10 hidden">
+                <div class="bg-white p-6 rounded-xl text-center shadow-2xl">
+                  <i class="fa fa-exclamation-circle text-accent text-4xl mb-4"></i>
+                  <h3 class="text-xl font-bold text-dark mb-2">无法消除</h3>
+                  <p class="text-gray-600 mb-4">当前没有可消除的组合，游戏将自动重新生成布局</p>
+                  <button id="regenerate-btn" class="btn-hover py-2 px-6 bg-primary text-white rounded-lg font-bold shadow-md transition-all">重新生成</button>
+                </div>
+              </div>
+              <div id="performance-warning" class="absolute inset-0 bg-dark/70 rounded-xl flex items-center justify-center z-10 hidden">
+                <div class="bg-white p-6 rounded-xl text-center shadow-2xl">
+                  <i class="fa fa-bolt text-accent text-4xl mb-4"></i>
+                  <h3 class="text-xl font-bold text-dark mb-2">性能警告</h3>
+                  <p class="text-gray-600 mb-4">检测到游戏性能不佳，已自动优化动画效果以保持流畅度</p>
+                  <button id="continue-btn" class="btn-hover py-2 px-6 bg-primary text-white rounded-lg font-bold shadow-md transition-all">继续游戏</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer class="bg-white/80 backdrop-blur-sm shadow-inner py-4 mt-8">
+    <div class="container mx-auto px-4 text-center text-gray-600 text-sm">
+      <p>© 2025 消消乐 | Designed by 开元</p>
+    </div>
+  </footer>
+  <script>
+    // Utility function for delays
+    const delay = ms => new Promise(res => setTimeout(res, ms));
+    // 降低关卡分数，合理下调（每关大幅降低，星级分数也降）
+    const gameConfig = {
+      tileTypes: ['🐱', '🐶', '🐭', '🦔', '🐷', '🦜'],
+      boardSize: 6,
+      animationDuration: 300,
+      levels: [
+        { id: 1, targetScore: 600, moves: 20, stars: [300, 450, 600] },
+        { id: 2, targetScore: 900, moves: 25, stars: [500, 700, 900] },
+        { id: 3, targetScore: 1200, moves: 30, stars: [700, 1000, 1200] },
+        { id: 4, targetScore: 1500, moves: 35, stars: [900, 1200, 1500] },
+        { id: 5, targetScore: 1800, moves: 40, stars: [1200, 1500, 1800] }
+      ]
+    };
+    const gameState = {
+      currentLevel: 1,
+      score: 0,
+      movesLeft: 0,
+      selectedTile: null,
+      board: [],
+      isBusy: false,
+      useAnimations: true,
+      lastAnimationStartTime: 0,
+      animationTimeoutHandle: null,
+      performanceMetrics: {
+        animationOverTimeCount: 0,
+        performanceWarningThreshold: 5
+      }
+    };
+    // DOM elements
+    const screens = {
+      welcome: document.getElementById('welcome-screen'),
+      levels: document.getElementById('levels-screen'),
+      help: document.getElementById('help-screen'),
+      game: document.getElementById('game-screen')
+    };
+    const elements = {
+      gameBoard: document.getElementById('game-board'),
+      score: document.getElementById('score'),
+      movesLeft: document.getElementById('moves-left'),
+      currentLevel: document.getElementById('current-level'),
+      targetScore: document.getElementById('target-score'),
+      star1: document.getElementById('star-1'),
+      star2: document.getElementById('star-2'),
+      star3: document.getElementById('star-3'),
+      gameStartOverlay: document.getElementById('game-start-overlay'),
+      overlayLevel: document.getElementById('overlay-level'),
+      overlayGoal: document.getElementById('overlay-goal'),
+      gameWinOverlay: document.getElementById('game-win-overlay'),
+      gameLoseOverlay: document.getElementById('game-lose-overlay'),
+      finalScore: document.getElementById('final-score'),
+      finalScoreLose: document.getElementById('final-score-lose'),
+      starsContainer: document.getElementById('stars-container'),
+      levelGoal: document.getElementById('level-goal'),
+      levelsContainer: document.getElementById('levels-screen').querySelector('.grid'),
+      noMatchesOverlay: document.getElementById('no-matches-overlay'),
+      regenerateBtn: document.getElementById('regenerate-btn'),
+      performanceWarning: document.getElementById('performance-warning'),
+      continueBtn: document.getElementById('continue-btn'),
+      scorePopupContainer: document.getElementById('score-popup-container')
+    };
+   
+
+    // Event listeners
+    document.getElementById('start-game-btn').addEventListener('click', startGame);
+    document.getElementById('select-level-btn').addEventListener('click', showLevels);
+    document.getElementById('levels-btn').addEventListener('click', showLevels);
+    document.getElementById('help-btn').addEventListener('click', showHelp);
+    document.getElementById('back-from-help-btn').addEventListener('click', showWelcome);
+    document.getElementById('back-btn').addEventListener('click', showLevels);
+    document.getElementById('restart-level-btn').addEventListener('click', restartLevel);
+    document.getElementById('start-level-btn').addEventListener('click', startLevel);
+    document.getElementById('next-level-btn').addEventListener('click', nextLevel);
+    document.getElementById('restart-win-btn').addEventListener('click', restartLevel);
+    document.getElementById('try-again-btn').addEventListener('click', restartLevel);
+    document.getElementById('select-level-lose-btn').addEventListener('click', showLevels);
+    document.getElementById('home-btn').addEventListener('click', showWelcome);
+    elements.regenerateBtn.addEventListener('click', () => {
+      elements.noMatchesOverlay.classList.add('hidden');
+      regenerateBoard();
+    });
+    elements.continueBtn && elements.continueBtn.addEventListener('click', () => {
+      elements.performanceWarning.classList.add('hidden');
+      gameState.useAnimations = false;
+      gameState.performanceMetrics.animationOverTimeCount = 0;
+    });
+    // Core Game Logic
+    function initGame() {
+      generateLevels();
+    }
+    function generateLevels() {
+      elements.levelsContainer.innerHTML = '';
+      gameConfig.levels.forEach(level => {
+        const levelEl = document.createElement('div');
+        levelEl.className = 'bg-white rounded-xl shadow-md p-4 flex flex-col items-center text-center btn-hover';
+        levelEl.innerHTML = `
+          <div class="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center text-xl font-bold mb-2">
+            ${level.id}
+          </div>
+          <h3 class="font-bold">关卡 ${level.id}</h3>
+          <p class="text-sm text-gray-600">目标: ${level.targetScore}分</p>
+        `;
+        levelEl.addEventListener('click', () => selectLevel(level.id));
+        elements.levelsContainer.appendChild(levelEl);
+      });
+    }
+    function showScreen(screenToShow) {
+      Object.values(screens).forEach(screen => {
+        screen.classList.add('hidden');
+      });
+      screenToShow.classList.remove('hidden');
+    }
+    function showWelcome() { showScreen(screens.welcome); }
+    function showLevels() { showScreen(screens.levels); }
+    function showHelp() { showScreen(screens.help); }
+    function startGame() { selectLevel(1); }
+    function selectLevel(levelId) {
+      gameState.currentLevel = levelId;
+      loadLevel(levelId);
+      showScreen(screens.game);
+    }
+    function loadLevel(levelId) {
+      const level = gameConfig.levels[levelId - 1];
+      if (!level) return;
+      gameState.score = 0;
+      gameState.movesLeft = level.moves;
+      gameState.selectedTile = null;
+      gameState.isBusy = false;
+      elements.currentLevel.textContent = levelId;
+      elements.targetScore.textContent = level.targetScore;
+      elements.score.textContent = '0';
+      elements.movesLeft.textContent = level.moves;
+      elements.star1.textContent = level.stars[0];
+      elements.star2.textContent = level.stars[1];
+      elements.star3.textContent = level.stars[2];
+      elements.levelGoal.innerHTML = `获得 <span id="target-score">${level.targetScore}</span> 分`;
+      elements.overlayLevel.textContent = levelId;
+      elements.overlayGoal.textContent = `获得 ${level.targetScore} 分`;
+      generateBoard();
+      elements.gameStartOverlay.classList.remove('hidden');
+      elements.gameWinOverlay.classList.add('hidden');
+      elements.gameLoseOverlay.classList.add('hidden');
+      elements.noMatchesOverlay.classList.add('hidden');
+      elements.performanceWarning.classList.add('hidden');
+    }
+    function startLevel() {
+      elements.gameStartOverlay.classList.add('hidden');
+    }
+    function generateBoard() {
+      elements.gameBoard.innerHTML = '';
+      elements.gameBoard.style.gridTemplateColumns = `repeat(${gameConfig.boardSize}, 1fr)`;
+      let attempts = 0;
+      let boardGenerated = false;
+      while (!boardGenerated && attempts < 100) {
+        gameState.board = [];
+        for (let r = 0; r < gameConfig.boardSize; r++) {
+          gameState.board[r] = [];
+          for (let c = 0; c < gameConfig.boardSize; c++) {
+            let tileType;
+            do {
+              tileType = gameConfig.tileTypes[Math.floor(Math.random() * gameConfig.tileTypes.length)];
+            } while (
+              (c >= 2 && gameState.board[r][c-1] === tileType && gameState.board[r][c-2] === tileType) ||
+              (r >= 2 && gameState.board[r-1][c] === tileType && gameState.board[r-2][c] === tileType)
+            );
+            gameState.board[r][c] = tileType;
+          }
+        }
+        if (hasPossibleMoves() && findMatches().length === 0) boardGenerated = true;
+        attempts++;
+      }
+      if (!boardGenerated) {
+        for (let r = 0; r < gameConfig.boardSize; r++) {
+          gameState.board[r] = [];
+          for (let c = 0; c < gameConfig.boardSize; c++) {
+            gameState.board[r][c] = gameConfig.tileTypes[Math.floor(Math.random() * gameConfig.tileTypes.length)];
+          }
+        }
+      }
+      updateBoardUI(true);
+    }
+    function createTileElement(row, col, type) {
+      const tile = document.createElement('div');
+      tile.className = 'tile bg-white rounded-lg flex items-center justify-center text-3xl tile-shadow transition-all duration-200 cursor-pointer';
+      tile.dataset.row = row;
+      tile.dataset.col = col;
+      tile.textContent = type;
+      tile.addEventListener('click', () => handleTileClick(row, col));
+      return tile;
+    }
+    function getTileElement(row, col) {
+      return elements.gameBoard.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+    }
+    async function updateBoardUI(initialRender = false) {
+      elements.gameBoard.innerHTML = '';
+      const animationPromises = [];
+      for (let row = 0; row < gameConfig.boardSize; row++) {
+        for (let col = 0; col < gameConfig.boardSize; col++) {
+          const type = gameState.board[row][col];
+          if (type !== null) {
+            const tile = createTileElement(row, col, type);
+            if (initialRender && gameState.useAnimations) {
+              setTimeout(() => {
+                tile.classList.add('tile-fall');
+                animationPromises.push(new Promise(resolve => {
+                  tile.addEventListener('animationend', function handler() {
+                    tile.classList.remove('tile-fall');
+                    tile.removeEventListener('animationend', handler);
+                    resolve();
+                  }, { once: true });
+                }));
+              }, row * 50 + col * 20);
+            }
+            elements.gameBoard.appendChild(tile);
+          }
+        }
+      }
+      if (initialRender && gameState.useAnimations) await Promise.all(animationPromises);
+    }
+    async function handleTileClick(row, col) {
+      if (gameState.isBusy) return;
+      const tile = getTileElement(row, col);
+      if (!gameState.selectedTile) {
+        gameState.selectedTile = { row, col, element: tile };
+        tile.classList.add('tile-selected');
+      } else {
+        const selectedRow = gameState.selectedTile.row;
+        const selectedCol = gameState.selectedTile.col;
+        gameState.selectedTile.element.classList.remove('tile-selected');
+        if (
+          (Math.abs(row - selectedRow) === 1 && col === selectedCol) ||
+          (Math.abs(col - selectedCol) === 1 && row === selectedRow)
+        ) {
+          gameState.isBusy = true;
+          const hasMatches = await swapTiles(selectedRow, selectedCol, row, col);
+          gameState.selectedTile = null;
+          if (hasMatches) await processGameCycle();
+          gameState.isBusy = false;
+        } else {
+          gameState.selectedTile = { row, col, element: tile };
+          tile.classList.add('tile-selected');
+        }
+      }
+    }
+    async function swapTiles(row1, col1, row2, col2) {
+      const tile1 = getTileElement(row1, col1);
+      const tile2 = getTileElement(row2, col2);
+      const originalTile1Data = { row: tile1.dataset.row, col: tile1.dataset.col };
+      const originalTile2Data = { row: tile2.dataset.row, col: tile2.dataset.col };
+      const originalTile1Content = tile1.textContent;
+      const originalTile2Content = tile2.textContent;
+      [gameState.board[row1][col1], gameState.board[row2][col2]] =
+        [gameState.board[row2][col2], gameState.board[row1][col1]];
+      let hasMatchesAfterSwap = findMatches().length > 0;
+      if (gameState.useAnimations) {
+        const boardRect = elements.gameBoard.getBoundingClientRect();
+        const tile1Rect = tile1.getBoundingClientRect();
+        const tile2Rect = tile2.getBoundingClientRect();
+        tile1.classList.add('tile-swapping');
+        tile2.classList.add('tile-swapping');
+        tile1.style.left = `${tile1Rect.left - boardRect.left}px`;
+        tile1.style.top = `${tile1Rect.top - boardRect.top}px`;
+        tile1.style.width = `${tile1Rect.width}px`;
+        tile1.style.height = `${tile1Rect.height}px`;
+        tile2.style.left = `${tile2Rect.left - boardRect.left}px`;
+        tile2.style.top = `${tile2Rect.top - boardRect.top}px`;
+        tile2.style.width = `${tile2Rect.width}px`;
+        tile2.style.height = `${tile2Rect.height}px`;
+        tile1.textContent = gameState.board[row2][col2];
+        tile2.textContent = gameState.board[row1][col1];
+        void tile1.offsetWidth;
+        void tile2.offsetWidth;
+        tile1.style.transition = `all ${gameConfig.animationDuration / 1000}s ease-in-out`;
+        tile2.style.transition = `all ${gameConfig.animationDuration / 1000}s ease-in-out`;
+        tile1.style.left = `${tile2Rect.left - boardRect.left}px`;
+        tile1.style.top = `${tile2Rect.top - boardRect.top}px`;
+        tile2.style.left = `${tile1Rect.left - boardRect.left}px`;
+        tile2.style.top = `${tile1Rect.top - boardRect.top}px`;
+        await delay(gameConfig.animationDuration);
+        tile1.style.transition = '';
+        tile2.style.transition = '';
+        tile1.classList.remove('tile-swapping');
+        tile2.classList.remove('tile-swapping');
+        tile1.style.left = ''; tile1.style.top = '';
+        tile2.style.left = ''; tile2.style.top = '';
+        tile1.style.width = ''; tile1.style.height = '';
+        tile2.style.width = ''; tile2.style.height = '';
+        tile1.dataset.row = originalTile2Data.row;
+        tile1.dataset.col = originalTile2Data.col;
+        tile2.dataset.row = originalTile1Data.row;
+        tile2.dataset.col = originalTile1Data.col;
+        if (!hasMatchesAfterSwap) {
+          [gameState.board[row1][col1], gameState.board[row2][col2]] =
+            [gameState.board[row2][col2], gameState.board[row1][col1]];
+          tile1.classList.add('tile-swapping');
+          tile2.classList.add('tile-swapping');
+          tile1.style.left = `${tile2Rect.left - boardRect.left}px`;
+          tile1.style.top = `${tile2Rect.top - boardRect.top}px`;
+          tile2.style.left = `${tile1Rect.left - boardRect.left}px`;
+          tile2.style.top = `${tile1Rect.top - boardRect.top}px`;
+          tile1.style.width = `${tile1Rect.width}px`;
+          tile1.style.height = `${tile1Rect.height}px`;
+          tile2.style.width = `${tile2Rect.width}px`;
+          tile2.style.height = `${tile2Rect.height}px`;
+          tile1.textContent = originalTile1Content;
+          tile2.textContent = originalTile2Content;
+          void tile1.offsetWidth;
+          void tile2.offsetWidth;
+          tile1.style.transition = `all ${gameConfig.animationDuration / 1000}s ease-in-out`;
+          tile2.style.transition = `all ${gameConfig.animationDuration / 1000}s ease-in-out`;
+          tile1.style.left = `${tile1Rect.left - boardRect.left}px`;
+          tile1.style.top = `${tile1Rect.top - boardRect.top}px`;
+          tile2.style.left = `${tile2Rect.left - boardRect.left}px`;
+          tile2.style.top = `${tile1Rect.top - boardRect.top}px`;
+          await delay(gameConfig.animationDuration);
+          tile1.style.transition = '';
+          tile2.style.transition = '';
+          tile1.classList.remove('tile-swapping');
+          tile2.classList.remove('tile-swapping');
+          tile1.style.left = ''; tile1.style.top = '';
+          tile2.style.left = ''; tile2.style.top = '';
+          tile1.style.width = ''; tile1.style.height = '';
+          tile2.style.width = ''; tile2.style.height = '';
+          tile1.dataset.row = originalTile1Data.row;
+          tile1.dataset.col = originalTile1Data.col;
+          tile2.dataset.row = originalTile2Data.row;
+          tile2.dataset.col = originalTile2Data.col;
+        }
+      } else {
+        tile1.textContent = gameState.board[row2][col2];
+        tile2.textContent = gameState.board[row1][col1];
+        tile1.dataset.row = originalTile2Data.row;
+        tile1.dataset.col = originalTile2Data.col;
+        tile2.dataset.row = originalTile1Data.row;
+        tile2.dataset.col = originalTile1Data.col;
+        if (!hasMatchesAfterSwap) {
+          [gameState.board[row1][col1], gameState.board[row2][col2]] =
+            [gameState.board[row2][col2], gameState.board[row1][col1]];
+          tile1.textContent = originalTile1Content;
+          tile2.textContent = originalTile2Content;
+          tile1.dataset.row = originalTile1Data.row;
+          tile1.dataset.col = originalTile1Data.col;
+          tile2.dataset.row = originalTile2Data.row;
+          tile2.dataset.col = originalTile2Data.col;
+        }
+      }
+      return hasMatchesAfterSwap;
+    }
+    // 获取全场指定类型所有格
+    function getSameTypeTiles(type) {
+      const tiles = [];
+      for (let r = 0; r < gameConfig.boardSize; r++) {
+        for (let c = 0; c < gameConfig.boardSize; c++) {
+          if (gameState.board[r][c] === type)
+            tiles.push({ row: r, col: c });
+        }
+      }
+      return tiles;
+    }
+    // 新findMatches：识别3/4/5连、交叉
+    function findMatches() {
+      const size = gameConfig.boardSize;
+      const matches = [];
+      const used = Array.from({ length: size }, () => Array(size).fill(false));
+      // 横向
+      for (let r = 0; r < size; r++) {
+        let c = 0;
+        while (c < size) {
+          let start = c, type = gameState.board[r][c];
+          while (c < size && gameState.board[r][c] === type) c++;
+          let len = c - start;
+          if (type && len >= 3) {
+            matches.push({
+              type,
+              kind: len === 5 ? 'bomb' : (len === 4 ? 'row' : 'normal'),
+              direction: 'row',
+              cells: Array.from({ length: len }, (_, i) => ({ row: r, col: start + i }))
+            });
+            for (let i = start; i < c; i++) used[r][i] = true;
+          }
+        }
+      }
+      // 纵向
+      for (let c = 0; c < size; c++) {
+        let r = 0;
+        while (r < size) {
+          let start = r, type = gameState.board[r][c];
+          while (r < size && gameState.board[r][c] === type) r++;
+          let len = r - start;
+          if (type && len >= 3) {
+            let cross = false;
+            for (let i = start; i < r; i++) if (used[i][c]) cross = true;
+            matches.push({
+              type,
+              kind: len === 5 ? 'bomb' : (len === 4 ? 'col' : 'normal'),
+              direction: 'col',
+              cells: Array.from({ length: len }, (_, i) => ({ row: start + i, col: c })),
+              cross
+            });
+          }
+        }
+      }
+      // 检测交叉消除，两种类型的4连及以上在同一点交叉
+      for (let i = 0; i < matches.length; i++) {
+        for (let j = i + 1; j < matches.length; j++) {
+          const a = matches[i], b = matches[j];
+          if (!a || !b) continue;
+          if (a.kind !== 'normal' && b.kind !== 'normal') {
+            for (const ac of a.cells) {
+              for (const bc of b.cells) {
+                if (ac.row === bc.row && ac.col === bc.col && a.type !== b.type) {
+                  a.kind = b.kind = 'rainbow';
+                  a.crossType = [a.type, b.type];
+                  b.crossType = [a.type, b.type];
+                }
+              }
+            }
+          }
+        }
+      }
+      // 合并交叉消除
+      const result = [];
+      const seen = {};
+      for (const m of matches) {
+        if (m.kind === 'rainbow') {
+          const key = m.crossType.sort().join(',');
+          if (!seen[key]) {
+            seen[key] = true;
+            result.push(m);
+          }
+        } else {
+          result.push(m);
+        }
+      }
+      return result;
+    }
+    // 新增：显示分数动画
+    function showScorePopup(score, cells) {
+      if (!cells || cells.length === 0) return;
+      // 优先用cells中间的点
+      let center;
+      if (cells.length % 2 === 1) {
+        center = cells[Math.floor(cells.length/2)];
+      } else {
+        center = cells[0];
+      }
+      const tile = getTileElement(center.row, center.col);
+      if (!tile) return;
+      const tileRect = tile.getBoundingClientRect();
+      const boardRect = elements.gameBoard.getBoundingClientRect();
+      // 保证容器有定位
+      const popup = document.createElement('div');
+      popup.className = 'score-popup text-lg font-bold text-accent drop-shadow-lg select-none pointer-events-none';
+      popup.textContent = `+${score}`;
+      // 计算相对位置
+      popup.style.left = `${tileRect.left - boardRect.left + tileRect.width/2 - 20}px`;
+      popup.style.top = `${tileRect.top - boardRect.top + tileRect.height/2 - 24}px`;
+      popup.style.position = 'absolute';
+      popup.style.width = '40px';
+      popup.style.height = '24px';
+      elements.scorePopupContainer.appendChild(popup);
+      setTimeout(() => {
+        popup.remove();
+      }, 1000); // 动画持续1s
+    }
+    // 计分规则
+    // 基础分：每个普通消除10分
+    // 连续消除：每次combo(第二次及以上)多4分
+    // 特殊元素消除（4、5连、交叉）：每个消除多加6分
+    async function processMatches(matches, comboCount) {
+      if (matches.length === 0) return;
+      let totalPoints = 0;
+      const animationPromises = [];
+      let toRemove = Array.from({ length: gameConfig.boardSize }, () => Array(gameConfig.boardSize).fill(false));
+      // 新增：每组match单独分数动画
+      for (const match of matches) {
+        let isSpecial = false;
+        let matchCells = [];
+        // 交叉消除 - 彩虹糖
+        if (match.kind === 'rainbow') {
+          isSpecial = true;
+          for (const type of match.crossType) {
+            for (const { row, col } of getSameTypeTiles(type)) {
+              toRemove[row][col] = true;
+              matchCells.push({ row, col });
+            }
+          }
+        }
+        // 5连消 - 炸弹
+        else if (match.kind === 'bomb') {
+          isSpecial = true;
+          const center = match.cells[Math.floor(match.cells.length / 2)];
+          for (let r = center.row - 1; r <= center.row + 1; r++) {
+            for (let c = center.col - 1; c <= center.col + 1; c++) {
+              if (r >= 0 && r < gameConfig.boardSize && c >= 0 && c < gameConfig.boardSize) {
+                toRemove[r][c] = true;
+                matchCells.push({ row: r, col: c });
+              }
+            }
+          }
+        }
+        // 4连消 - 行/列全消
+        else if (match.kind === 'row') {
+          isSpecial = true;
+          const r = match.cells[0].row;
+          for (let c = 0; c < gameConfig.boardSize; c++) {
+            toRemove[r][c] = true;
+            matchCells.push({ row: r, col: c });
+          }
+        } else if (match.kind === 'col') {
+          isSpecial = true;
+          const c = match.cells[0].col;
+          for (let r = 0; r < gameConfig.boardSize; r++) {
+            toRemove[r][c] = true;
+            matchCells.push({ row: r, col: c });
+          }
+        }
+        // 普通3连消
+        else if (match.kind === 'normal') {
+          for (const { row, col } of match.cells) {
+            toRemove[row][col] = true;
+            matchCells.push({ row, col });
+          }
+        }
+        // 计算得分
+        let baseScore = 0;
+        if (isSpecial) {
+          // 特殊元素每格基础分+特殊分
+          baseScore = matchCells.length * (10 + 6);
+        } else {
+          baseScore = matchCells.length * 10;
+        }
+        // 连续消除加分（第一轮combo不加，后续每轮+4/格）
+        let comboBonus = comboCount > 1 ? matchCells.length * 4 : 0;
+        let matchScore = baseScore + comboBonus;
+        totalPoints += matchScore;
+
+        // 新增分数动画
+        showScorePopup(matchScore, matchCells);
+      }
+      // 动画和消除
+      for (let r = 0; r < gameConfig.boardSize; r++) {
+        for (let c = 0; c < gameConfig.boardSize; c++) {
+          if (toRemove[r][c]) {
+            const tileElement = getTileElement(r, c);
+            if (tileElement) {
+              tileElement.classList.add('tile-remove');
+              if (gameState.useAnimations) {
+                animationPromises.push(new Promise(resolve => {
+                  tileElement.addEventListener('animationend', function handler() {
+                    tileElement.removeEventListener('animationend', handler);
+                    resolve();
+                  }, { once: true });
+                }));
+              }
+              tileElement.textContent = '';
+              tileElement.style.visibility = 'hidden';
+              gameState.board[r][c] = null;
+            }
+          }
+        }
+      }
+      gameState.score += totalPoints;
+      elements.score.textContent = gameState.score;
+      if (gameState.useAnimations) await Promise.all(animationPromises);
+    }
+    async function processGameCycle() {
+      let matches = findMatches();
+      let combos = 0;
+      while (matches.length > 0) {
+        combos++;
+        await processMatches(matches, combos);
+        dropTilesLogical();
+        generateNewTilesLogical();
+        await updateBoardUIWithFallAnimation();
+        matches = findMatches();
+      }
+      if (combos > 0) {
+        gameState.movesLeft--;
+        elements.movesLeft.textContent = gameState.movesLeft;
+      }
+      if (!hasPossibleMoves()) elements.noMatchesOverlay.classList.remove('hidden');
+      checkGameState();
+    }
+    function dropTilesLogical() {
+      for (let c = 0; c < gameConfig.boardSize; c++) {
+        let emptySpaces = 0;
+        for (let r = gameConfig.boardSize - 1; r >= 0; r--) {
+          if (gameState.board[r][c] === null) {
+            emptySpaces++;
+          } else if (emptySpaces > 0) {
+            gameState.board[r + emptySpaces][c] = gameState.board[r][c];
+            gameState.board[r][c] = null;
+          }
+        }
+      }
+    }
+    function generateNewTilesLogical() {
+      for (let c = 0; c < gameConfig.boardSize; c++) {
+        for (let r = 0; r < gameConfig.boardSize; r++) {
+          if (gameState.board[r][c] === null) {
+            gameState.board[r][c] = gameConfig.tileTypes[Math.floor(Math.random() * gameConfig.tileTypes.length)];
+          }
+        }
+      }
+    }
+    async function updateBoardUIWithFallAnimation() {
+      elements.gameBoard.innerHTML = '';
+      const animationPromises = [];
+      for (let row = 0; row < gameConfig.boardSize; row++) {
+        for (let col = 0; col < gameConfig.boardSize; col++) {
+          const type = gameState.board[row][col];
+          if (type !== null) {
+            const tile = createTileElement(row, col, type);
+            if (gameState.useAnimations) {
+              tile.classList.add('tile-fall');
+              animationPromises.push(new Promise(resolve => {
+                tile.addEventListener('animationend', function handler() {
+                  tile.classList.remove('tile-fall');
+                  tile.removeEventListener('animationend', handler);
+                  resolve();
+                }, { once: true });
+              }));
+            }
+            elements.gameBoard.appendChild(tile);
+          }
+        }
+      }
+      if (gameState.useAnimations) await Promise.all(animationPromises);
+    }
+    function hasPossibleMoves() {
+      for (let r = 0; r < gameConfig.boardSize; r++) {
+        for (let c = 0; c < gameConfig.boardSize; c++) {
+          const originalType = gameState.board[r][c];
+          const neighbors = [[r, c + 1], [r + 1, c]];
+          for (const [nr, nc] of neighbors) {
+            if (nr >= 0 && nr < gameConfig.boardSize && nc >= 0 && nc < gameConfig.boardSize) {
+              const neighborType = gameState.board[nr][nc];
+              gameState.board[r][c] = neighborType;
+              gameState.board[nr][nc] = originalType;
+              if (findMatches().length > 0) {
+                gameState.board[r][c] = originalType;
+                gameState.board[nr][nc] = neighborType;
+                return true;
+              }
+              gameState.board[r][c] = originalType;
+              gameState.board[nr][nc] = neighborType;
+            }
+          }
+        }
+      }
+      return false;
+    }
+    async function regenerateBoard() {
+      gameState.isBusy = true;
+      elements.noMatchesOverlay.classList.add('hidden');
+      const removePromises = [];
+      if (gameState.useAnimations) {
+        elements.gameBoard.querySelectorAll('.tile').forEach(tile => {
+          tile.classList.add('tile-remove');
+          removePromises.push(new Promise(resolve => {
+            tile.addEventListener('animationend', function handler() {
+              tile.removeEventListener('animationend', handler);
+              resolve();
+            }, { once: true });
+          }));
+        });
+        await Promise.all(removePromises);
+        await delay(50);
+      }
+      generateBoard();
+      gameState.isBusy = false;
+    }
+    function checkGameState() {
+      const level = gameConfig.levels[gameState.currentLevel - 1];
+      if (gameState.score >= level.targetScore) showWinScreen();
+      else if (gameState.movesLeft <= 0) showLoseScreen();
+    }
+    function showWinScreen() {
+      elements.finalScore.textContent = gameState.score;
+      const level = gameConfig.levels[gameState.currentLevel - 1];
+      let stars = 0;
+      if (gameState.score >= level.stars[2]) stars = 3;
+      else if (gameState.score >= level.stars[1]) stars = 2;
+      else if (gameState.score >= level.stars[0]) stars = 1;
+      elements.starsContainer.innerHTML = '';
+      for (let i = 0; i < 3; i++) {
+        const star = document.createElement('div');
+        star.className = `w-10 h-10 rounded-full flex items-center justify-center text-2xl ${
+          i < stars ? 'bg-accent text-white' : 'bg-gray-200 text-gray-400'
+        }`;
+        star.innerHTML = '<i class="fa fa-star"></i>';
+        elements.starsContainer.appendChild(star);
+      }
+      elements.gameWinOverlay.classList.remove('hidden');
+    }
+    function showLoseScreen() {
+      elements.finalScoreLose.textContent = gameState.score;
+      elements.gameLoseOverlay.classList.remove('hidden');
+    }
+    function restartLevel() {
+      loadLevel(gameState.currentLevel);
+    }
+    function nextLevel() {
+      if (gameState.currentLevel < gameConfig.levels.length) {
+        selectLevel(gameState.currentLevel + 1);
+      } else {
+        alert('恭喜你通关了所有关卡！');
+        selectLevel(1);
+      }
+    }
+    document.addEventListener('DOMContentLoaded', initGame);
+  </script>
+</body>
+</html>
